@@ -16,8 +16,8 @@ class ViewController: UIViewController {
     @IBOutlet var warriorCatImageView: UIImageView!
     
     // MARK: - Properties
-    var toDos: [ToDoItem] = []
-    var completedToDos: [ToDoItem] = []
+    var toDos: [ToDo] = []
+    var completedToDos: [ToDo] = []
     
     // MARK: - View Life Cycle
     override func viewDidLoad() {
@@ -38,6 +38,12 @@ extension ViewController {
         
         controller.addAction(UIAlertAction(title: "Task without Checklist", style: .default) { [weak self] _ in
             self?.createDefaultTask()
+        })
+
+        controller.addAction(UIAlertAction(title: "task with CheckList",
+                                           style: .default) { [weak self] action in
+                                            guard let self = self else { return }
+                                            self.createTaskWithCheckList()
         })
         
         present(controller, animated: true)
@@ -90,6 +96,68 @@ extension ViewController {
         
         present(controller, animated: true)
     }
+
+    func createTaskWithCheckList() {
+        let controller = UIAlertController(title: "Task Name",
+                                           message: "",
+                                           preferredStyle: .alert)
+
+        controller.addTextField { textField in
+            textField.placeholder = "Enter Task Title"
+        }
+
+        for _ in 1...4 {
+            controller.addTextField { textField in
+                textField.placeholder = "Add Subtask"
+            }
+        }
+
+
+        let saveAction = UIAlertAction(title: "Save",
+                                       style: .default) { [weak self] alert in
+                                        guard let self = self else { return }
+                                        guard var textFields = controller.textFields,
+                                            textFields.count == 5 else { return }
+
+                                        let titleTextField = textFields[0]
+                                        let firstTextField = textFields[1]
+                                        let secondTextField = textFields[2]
+                                        let thirdTextField = textFields[3]
+                                        let fourthTextField = textFields[4]
+
+                                        let subtaskTextFields = [firstTextField,
+                                                                 secondTextField,
+                                                                 thirdTextField,
+                                                                 fourthTextField]
+
+                                        var subtasks: [ToDo] = []
+
+                                        subtaskTextFields.forEach { textField in
+                                            guard let text = textField.text,
+                                                !text.isEmpty else {
+                                                    return
+                                            }
+                                            subtasks.append(ToDoItem(name: text))
+                                        }
+                                        
+                                        let currentToDo = ToDoItemWithCheckList(name: titleTextField.text ?? "",
+                                                                                subtasks: subtasks)
+
+                                        self.toDos.append(currentToDo)
+                                        self.toDoListCollectionView.reloadData()
+                                        self.setWarriorPosition()
+
+        }
+
+        let cancelAction = UIAlertAction(title: "Cancel",
+                                         style: .default)
+
+        controller.addAction(saveAction)
+        controller.addAction(cancelAction)
+
+        present(controller, animated: true)
+
+    }
 }
 
 // MARK: - UICollectionViewDataSource
@@ -113,6 +181,10 @@ extension ViewController: UICollectionViewDataSource {
         }
         
         cell.layoutSubviews()
+
+        if currentToDo is ToDoItemWithCheckList{
+            cell.subtasks = currentToDo.subtasks
+        }
         return cell
     }
 }
@@ -121,7 +193,7 @@ extension ViewController: UICollectionViewDataSource {
 extension ViewController: UICollectionViewDelegate {
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let currentToDo = toDos[indexPath.row]
+        var currentToDo = toDos[indexPath.row]
         
         if currentToDo.isComplete {
             currentToDo.isComplete = false
@@ -143,7 +215,10 @@ extension ViewController: UICollectionViewDelegateFlowLayout {
                         layout collectionViewLayout: UICollectionViewLayout,
                         sizeForItemAt indexPath: IndexPath) -> CGSize {
         let width = collectionView.frame.width
-        let height = collectionView.frame.height * 0.15
+        let currentToDo = toDos[indexPath.row]
+        let heightVariance = 60 * (currentToDo.subtasks.count)
+        let addedHeight = CGFloat(heightVariance)
+        let height = collectionView.frame.height * 0.15 + addedHeight
         
         return CGSize(width: width, height: height)
     }
